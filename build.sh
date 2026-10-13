@@ -9,7 +9,10 @@ set -euo pipefail
 cd "${0:A:h}"
 
 MODE="${1:-}"
+FLAGS=()
 if [[ "$MODE" == appstore ]]; then
+  # The App Store build is the only one with the in-app purchase.
+  FLAGS=(-Xswiftc -DAPPSTORE)
   OUT="build/AppStore"
   CERT="Apple Distribution"
   ENTITLEMENTS=(--entitlements Resources/AppStore.entitlements)
@@ -23,8 +26,8 @@ HELPER="$APP/Contents/Library/LoginItems/BetterRemoteDisplay Helper.app"
 
 # Universal: macOS 14 and 15 still run on Intel Macs.
 ARCHS=(--arch arm64 --arch x86_64)
-swift build -c release $ARCHS
-BIN="$(swift build -c release $ARCHS --show-bin-path)"
+swift build -c release $ARCHS $FLAGS
+BIN="$(swift build -c release $ARCHS $FLAGS --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$HELPER/Contents/MacOS" "$HELPER/Contents/Resources"

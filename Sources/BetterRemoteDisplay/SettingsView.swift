@@ -1,12 +1,37 @@
 import BRDShared
+import StoreKit
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(ConfigStore.self) private var store
+
     var body: some View {
+        if Edition.isAppStore {
+            // Keep the shared config in step with the App Store's record of the purchase,
+            // including refunds. Left alone while the answer is unknown (e.g. offline).
+            tabs.currentEntitlementTask(for: Edition.proProductID) { state in
+                guard case .success(let entitlement) = state else { return }
+                var unlocked = false
+                if case .verified(let transaction)? = entitlement {
+                    unlocked = transaction.revocationDate == nil
+                }
+                store.update { $0.proUnlocked = unlocked }
+            }
+        } else {
+            tabs
+        }
+    }
+
+    private var tabs: some View {
         TabView {
             GeneralTab().tabItem { Label("General", systemImage: "gearshape") }
-            PresetsTab().tabItem { Label("Presets", systemImage: "list.bullet") }
-            CustomTab().tabItem { Label("Custom", systemImage: "slider.horizontal.3") }
+            if store.config.isPro {
+                PresetsTab().tabItem { Label("Presets", systemImage: "list.bullet") }
+                CustomTab().tabItem { Label("Custom", systemImage: "slider.horizontal.3") }
+            } else {
+                DeviceTab().tabItem { Label("Device", systemImage: "macbook.and.ipad") }
+                ProTab().tabItem { Label("Pro", systemImage: "sparkles") }
+            }
         }
         .frame(width: 520, height: 520)
     }
@@ -65,7 +90,11 @@ private struct GeneralTab: View {
             }
             .disabled(!helper.isRunning)
 
-            if let supportURL = BRD.supportURL {
+            if Edition.isAppStore {
+                Section {
+                    LabeledContent("Edition", value: store.config.isPro ? "Pro" : "Free")
+                }
+            } else if let supportURL = BRD.supportURL {
                 Section {
                     Link(destination: supportURL) {
                         Label("Buy Me a Coffee", systemImage: "cup.and.saucer")
@@ -83,6 +112,95 @@ private struct GeneralTab: View {
     private func binding(_ keyPath: WritableKeyPath<Config, Bool>) -> Binding<Bool> {
         Binding(get: { store.config[keyPath: keyPath] },
                 set: { value in store.update { $0[keyPath: keyPath] = value } })
+    }
+}
+
+// MARK: - Free tier (App Store build)
+
+/// The free tier works with one device. This is where you say which.
+private struct DeviceTab: View {
+    @Environment(ConfigStore.self) private var store
+
+    var body: some View {
+        Form {
+            ForEach([DeviceCategory.mac, .ipad, .iphone]) { category in
+                Section(category.title) {
+                    ForEach(Presets.deviceNames(in: category), id: \.self) { name in
+                        Button {
+                            choose(name)
+                        } label: {
+                            HStack {
+                                Text(name)
+                                Spacer()
+                                Image(systemName: "checkmark")
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.tint)
+                                    .opacity(store.config.device == name ? 1 : 0)
+                            }
+                            .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            Section {
+            } footer: {
+                Text("The menu bar offers this device’s resolutions. MacBook sizes exclude the notch. iPhone sizes are the screen’s pixels at 2x, because macOS can’t go as small as an iPhone’s own point size.")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func choose(_ name: String) {
+        store.update {
+            $0.device = name
+            // Move to the new device's first (default) mode, keeping the current orientation.
+            guard let size = $0.devicePresets.first?.size else { return }
+            $0.size = $0.size.isPortrait == size.isPortrait ? size : size.rotated
+        }
+    }
+}
+
+private struct ProTab: View {
+    @State private var restoreError: String?
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "sparkles")
+                .font(.system(size: 40))
+                .foregroundStyle(.tint)
+            Text("Switch between any number of devices from the menu bar, and add your own custom resolutions.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: 340)
+            // The system's own purchase control: localized name, price and buy button.
+            ProductView(id: Edition.proProductID)
+                .productViewStyle(.compact)
+                .frame(maxWidth: 380)
+                .padding(14)
+                .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 14, style: .continuous))
+            Button("Restore Purchase") {
+                Task {
+                    do {
+                        try await AppStore.sync()
+                        restoreError = nil
+                    } catch {
+                        restoreError = error.localizedDescription
+                    }
+                }
+            }
+            .buttonStyle(.link)
+            if let restoreError {
+                Text(restoreError)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+            }
+            Spacer()
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

@@ -43,6 +43,12 @@ If you build under your own team, replace the team ID in the app group identifie
 `Sources/BRDShared/ConfigStore.swift` and `Resources/AppStore.entitlements`, and the bundle
 identifiers in `Resources/*.plist`.
 
+## Editions
+
+Everything built from this repository is free and complete, except the Mac App Store build
+(`./build.sh appstore`), which is free for one device and unlocks more devices and custom
+resolutions with a one-time in-app purchase.
+
 ## How it works
 
 The helper creates a virtual display through `CGVirtualDisplay` and resizes it in place when

@@ -99,6 +99,19 @@ public struct CustomResolution: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
+/// Which channel this build is for. The App Store build (`-DAPPSTORE`) is free for one device
+/// and sells the rest as a one-time in-app purchase. Every other build has everything unlocked.
+public enum Edition {
+    #if APPSTORE
+    public static let isAppStore = true
+    #else
+    public static let isAppStore = false
+    #endif
+
+    /// The non-consumable in-app purchase that unlocks Pro, as set up in App Store Connect.
+    public static let proProductID = "com.hanzeqiu.BetterRemoteDisplay.pro"
+}
+
 /// Everything the helper needs to know. Written by whichever side the user touched last.
 public struct Config: Codable, Equatable, Sendable {
     /// Whether the virtual display exists at all.
@@ -108,6 +121,11 @@ public struct Config: Codable, Equatable, Sendable {
     /// Per-preset overrides of `DisplayPreset.showsByDefault`.
     public var visibility: [String: Bool] = [:]
     public var customs: [CustomResolution] = []
+    /// The one device the free tier offers, by name.
+    public var device = "MacBook Pro 14″"
+    /// Whether the Pro purchase is active. Written by the settings app, which is the only
+    /// process StoreKit will talk to; the helper just reads it.
+    public var proUnlocked = false
 
     public init() {}
 
@@ -119,8 +137,13 @@ public struct Config: Codable, Equatable, Sendable {
         size = try c.decodeIfPresent(DisplaySize.self, forKey: .size) ?? d.size
         visibility = try c.decodeIfPresent([String: Bool].self, forKey: .visibility) ?? d.visibility
         customs = try c.decodeIfPresent([CustomResolution].self, forKey: .customs) ?? d.customs
+        device = try c.decodeIfPresent(String.self, forKey: .device) ?? d.device
+        proUnlocked = try c.decodeIfPresent(Bool.self, forKey: .proUnlocked) ?? d.proUnlocked
         if !size.isValid { size = d.size }
     }
+
+    /// More than one device, and custom resolutions.
+    public var isPro: Bool { !Edition.isAppStore || proUnlocked }
 
     public func isVisible(_ preset: DisplayPreset) -> Bool {
         visibility[preset.id] ?? preset.showsByDefault
@@ -133,6 +156,11 @@ public struct Config: Codable, Equatable, Sendable {
     /// The presets listed in the menu bar panel for a category.
     public func menuPresets(in category: DeviceCategory) -> [DisplayPreset] {
         presets(in: category).filter(isVisible)
+    }
+
+    /// Every mode of the free tier's one device.
+    public var devicePresets: [DisplayPreset] {
+        Presets.all.filter { $0.name == device }
     }
 
     /// The preset the current resolution came from, if any.
