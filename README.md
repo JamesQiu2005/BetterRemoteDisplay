@@ -43,6 +43,11 @@ If you build under your own team, replace the team ID in the app group identifie
 `Sources/BRDShared/ConfigStore.swift` and `Resources/AppStore.entitlements`, and the bundle
 identifiers in `Resources/*.plist`.
 
+## Releases
+
+Pushing a tag like `v1.2` runs `.github/workflows/release.yml` on a self-hosted runner, which
+builds, signs and notarizes the app and attaches it to a GitHub Release.
+
 ## Editions
 
 Everything built from this repository is free and complete, except the Mac App Store build

@@ -37,6 +37,13 @@ vtool -set-build-version macos 14.0 "$SDK" -replace -output "$APP/Contents/MacOS
 vtool -set-build-version macos 14.0 "$SDK" -replace -output "$HELPER/Contents/MacOS/BetterRemoteDisplayHelper" "$BIN/BetterRemoteDisplayHelper"
 cp Resources/App-Info.plist "$APP/Contents/Info.plist"
 cp Resources/Helper-Info.plist "$HELPER/Contents/Info.plist"
+# VERSION (e.g. 1.2) overrides the version in the plists; releases set it from the git tag.
+if [[ -n "${VERSION:-}" ]]; then
+  for plist in "$APP/Contents/Info.plist" "$HELPER/Contents/Info.plist"; do
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" \
+                            -c "Set :CFBundleVersion ${BUILD_NUMBER:-$VERSION}" "$plist"
+  done
+fi
 
 if [[ ! -f build/AppIcon.icns || Scripts/make-icon.swift -nt build/AppIcon.icns ]]; then
   rm -rf build/AppIcon.iconset
