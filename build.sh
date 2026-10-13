@@ -5,24 +5,16 @@
 #   ./build.sh install    build, then copy to /Applications and open it
 #   ./build.sh appstore   sandboxed build into ./build/AppStore
 #   ./build.sh dist       build, then zip for distribution (notarized if NOTARY_PROFILE is set)
-# Builds the free edition unless EDITION=pro, which goes into ./build/Pro.
 set -euo pipefail
 cd "${0:A:h}"
 
 MODE="${1:-}"
-EDITION="${EDITION:-free}"
-FLAGS=()
-SUFFIX=""
-if [[ "$EDITION" == pro ]]; then
-  FLAGS=(-Xswiftc -DPRO)
-  SUFFIX="-Pro"
-fi
 if [[ "$MODE" == appstore ]]; then
   OUT="build/AppStore"
   CERT="Apple Distribution"
   ENTITLEMENTS=(--entitlements Resources/AppStore.entitlements)
 else
-  OUT="build${SUFFIX:+/Pro}"
+  OUT="build"
   CERT="Developer ID Application"
   ENTITLEMENTS=()
 fi
@@ -31,8 +23,8 @@ HELPER="$APP/Contents/Library/LoginItems/BetterRemoteDisplay Helper.app"
 
 # Universal: macOS 14 and 15 still run on Intel Macs.
 ARCHS=(--arch arm64 --arch x86_64)
-swift build -c release $ARCHS $FLAGS
-BIN="$(swift build -c release $ARCHS $FLAGS --show-bin-path)"
+swift build -c release $ARCHS
+BIN="$(swift build -c release $ARCHS --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$HELPER/Contents/MacOS" "$HELPER/Contents/Resources"
@@ -76,7 +68,7 @@ case "$MODE" in
     open "/Applications/BetterRemoteDisplay.app"
     ;;
   dist)
-    ZIP="build/BetterRemoteDisplay$SUFFIX.zip"
+    ZIP="build/BetterRemoteDisplay.zip"
     rm -f "$ZIP"
     ditto -c -k --keepParent "$APP" "$ZIP"
     # NOTARY_PROFILE is a keychain profile made with `xcrun notarytool store-credentials`.

@@ -8,12 +8,6 @@ import Foundation
 public enum Presets {
     public static let all: [DisplayPreset] = mac + ipad + iphone
 
-    /// Distinct device names in a category, in list order.
-    public static func deviceNames(in category: DeviceCategory) -> [String] {
-        var seen = Set<String>()
-        return all.filter { $0.category == category && seen.insert($0.name).inserted }.map(\.name)
-    }
-
     private static func preset(_ category: DeviceCategory, _ key: String, _ name: String, _ variant: String? = nil,
                                _ width: Int, _ height: Int, shown: Bool = true) -> DisplayPreset {
         DisplayPreset(id: "\(category.rawValue).\(key)", category: category, name: name, variant: variant,

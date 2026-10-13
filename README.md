@@ -30,10 +30,9 @@ falls back to.
 ./build.sh run        # build and open
 ./build.sh install    # build, copy to /Applications, open
 ./build.sh appstore   # sandboxed build into ./build/AppStore
+./build.sh dist       # build and zip for distribution
 ```
 
-Builds are the free edition (one device) by default. `EDITION=pro ./build.sh` builds Pro,
-which adds more devices in the menu and custom resolutions, into `./build/Pro`.
 `./build.sh dist` also zips the result, and notarizes it when `NOTARY_PROFILE` names a
 `notarytool` keychain profile.
 
@@ -57,30 +56,9 @@ future macOS release.
 | `Sources/BetterRemoteDisplay` | Settings window |
 | `Sources/BRDShared` | Config model, built-in presets, the config file both processes share |
 | `Sources/CGVirtualDisplayPrivate` | Header for the private virtual display interface |
-| `Server` | Cloudflare Worker that delivers the Pro download after a Stripe payment |
 
 The two processes share one JSON config file and tell each other about changes with a
 distributed notification.
-
-## Selling Pro
-
-`Server/` is a Cloudflare Worker that hands the Pro build to people who paid through a
-Stripe Payment Link. There are no accounts or licence keys: Stripe redirects the buyer to
-`/thanks?session_id=…`, the Worker asks Stripe whether that Checkout Session was paid, and
-serves the file from a private R2 bucket a limited number of times.
-
-To deploy it under your own account:
-
-1. `cd Server && npm install`
-2. `npx wrangler kv namespace create DOWNLOADS` and put the id in `wrangler.jsonc`.
-3. `npx wrangler r2 bucket create brd-releases`, then upload the build:
-   `npx wrangler r2 object put brd-releases/BetterRemoteDisplay-Pro.zip --file ../build/BetterRemoteDisplay-Pro.zip --remote`
-4. Create a Stripe Payment Link whose after-payment redirect is
-   `https://<your domain>/thanks?session_id={CHECKOUT_SESSION_ID}` and put its URL and id in
-   `wrangler.jsonc`.
-5. `npx wrangler secret put STRIPE_SECRET_KEY` with a restricted key that can read Checkout
-   Sessions.
-6. `npx wrangler deploy`
 
 ## Limitations
 

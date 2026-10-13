@@ -6,6 +6,9 @@ public enum BRD {
     public static let helperID = "com.hanzeqiu.BetterRemoteDisplay.Helper"
     public static let helperBundleName = "BetterRemoteDisplay Helper.app"
 
+    /// Donation page linked from Settings. Leave nil to hide the link.
+    public static let supportURL: URL? = nil
+
     public static let configChanged = Notification.Name("\(appID).configChanged")
     public static let quitHelper = Notification.Name("\(appID).quitHelper")
 

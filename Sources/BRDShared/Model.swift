@@ -99,19 +99,6 @@ public struct CustomResolution: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
-/// Which build this is. The free edition is limited to one device; Pro (built with `-DPRO`)
-/// adds more devices in the menu and custom resolutions.
-public enum Edition {
-    #if PRO
-    public static let isPro = true
-    #else
-    public static let isPro = false
-    #endif
-
-    public static let name = isPro ? "BetterRemoteDisplay Pro" : "BetterRemoteDisplay"
-    public static let upgradeURL = URL(string: "https://brd.spektralab.app")!
-}
-
 /// Everything the helper needs to know. Written by whichever side the user touched last.
 public struct Config: Codable, Equatable, Sendable {
     /// Whether the virtual display exists at all.
@@ -121,8 +108,6 @@ public struct Config: Codable, Equatable, Sendable {
     /// Per-preset overrides of `DisplayPreset.showsByDefault`.
     public var visibility: [String: Bool] = [:]
     public var customs: [CustomResolution] = []
-    /// The one device the free edition offers, by name.
-    public var device = "MacBook Pro 14″"
 
     public init() {}
 
@@ -134,7 +119,6 @@ public struct Config: Codable, Equatable, Sendable {
         size = try c.decodeIfPresent(DisplaySize.self, forKey: .size) ?? d.size
         visibility = try c.decodeIfPresent([String: Bool].self, forKey: .visibility) ?? d.visibility
         customs = try c.decodeIfPresent([CustomResolution].self, forKey: .customs) ?? d.customs
-        device = try c.decodeIfPresent(String.self, forKey: .device) ?? d.device
         if !size.isValid { size = d.size }
     }
 
@@ -149,11 +133,6 @@ public struct Config: Codable, Equatable, Sendable {
     /// The presets listed in the menu bar panel for a category.
     public func menuPresets(in category: DeviceCategory) -> [DisplayPreset] {
         presets(in: category).filter(isVisible)
-    }
-
-    /// Every mode of the free edition's one device.
-    public var devicePresets: [DisplayPreset] {
-        Presets.all.filter { $0.name == device }
     }
 
     /// The preset the current resolution came from, if any.
