@@ -14,8 +14,13 @@ struct MenuPanel: View {
     var body: some View {
         VStack(spacing: 12) {
             header
-            CategoryPicker(selection: $category)
+            if Edition.isPro {
+                CategoryPicker(selection: $category)
+            }
             presetList
+            if !Edition.isPro {
+                upgradeRow
+            }
             Divider()
                 .padding(.horizontal, 6)
             footer
@@ -55,7 +60,7 @@ struct MenuPanel: View {
     }
 
     private var presetList: some View {
-        let presets = config.menuPresets(in: category)
+        let presets = Edition.isPro ? config.menuPresets(in: category) : config.devicePresets
         return Group {
             if presets.isEmpty {
                 Text(category == .custom ? "Add custom resolutions in Settings." : "No presets shown. Choose some in Settings.")
@@ -80,6 +85,31 @@ struct MenuPanel: View {
                 .frame(height: min(CGFloat(presets.count), 6.5) * PresetRow.height)
             }
         }
+    }
+
+    private var upgradeRow: some View {
+        Link(destination: Edition.upgradeURL) {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 30, height: 30)
+                    .background(.primary.opacity(0.1), in: .circle)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Get Pro")
+                    Text("More devices and custom resolutions")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.up.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, minHeight: PresetRow.height - 4)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
     }
 
     private var footer: some View {

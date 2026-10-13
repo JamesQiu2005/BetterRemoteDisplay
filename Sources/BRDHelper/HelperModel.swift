@@ -28,6 +28,12 @@ final class HelperModel {
                 MainActor.assumeIsolated { self?.sync() }
             }
         }
+        // Any change to the display arrangement is a chance to notice ours has gone missing.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.sync() }
+        }
         DistributedNotificationCenter.default().addObserver(
             forName: BRD.quitHelper, object: nil, queue: .main
         ) { [weak self] _ in

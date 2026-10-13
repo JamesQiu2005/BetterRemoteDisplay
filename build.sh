@@ -4,16 +4,25 @@
 #   ./build.sh run        build, then open the app
 #   ./build.sh install    build, then copy to /Applications and open it
 #   ./build.sh appstore   sandboxed build into ./build/AppStore
+#   ./build.sh dist       build, then zip for distribution (notarized if NOTARY_PROFILE is set)
+# Builds the free edition unless EDITION=pro, which goes into ./build/Pro.
 set -euo pipefail
 cd "${0:A:h}"
 
 MODE="${1:-}"
+EDITION="${EDITION:-free}"
+FLAGS=()
+SUFFIX=""
+if [[ "$EDITION" == pro ]]; then
+  FLAGS=(-Xswiftc -DPRO)
+  SUFFIX="-Pro"
+fi
 if [[ "$MODE" == appstore ]]; then
   OUT="build/AppStore"
   CERT="Apple Distribution"
   ENTITLEMENTS=(--entitlements Resources/AppStore.entitlements)
 else
-  OUT="build"
+  OUT="build${SUFFIX:+/Pro}"
   CERT="Developer ID Application"
   ENTITLEMENTS=()
 fi
@@ -22,8 +31,8 @@ HELPER="$APP/Contents/Library/LoginItems/BetterRemoteDisplay Helper.app"
 
 # Universal: macOS 14 and 15 still run on Intel Macs.
 ARCHS=(--arch arm64 --arch x86_64)
-swift build -c release $ARCHS
-BIN="$(swift build -c release $ARCHS --show-bin-path)"
+swift build -c release $ARCHS $FLAGS
+BIN="$(swift build -c release $ARCHS $FLAGS --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$HELPER/Contents/MacOS" "$HELPER/Contents/Resources"
@@ -47,8 +56,11 @@ cp build/AppIcon.icns "$HELPER/Contents/Resources/"
 IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' -v cert="$CERT" 'index($2, cert) {print $2; exit}')}"
 IDENTITY="${IDENTITY:--}"
 xattr -cr "$APP"
-codesign --force --options runtime --timestamp=none $ENTITLEMENTS --sign "$IDENTITY" "$HELPER"
-codesign --force --options runtime --timestamp=none $ENTITLEMENTS --sign "$IDENTITY" "$APP"
+# Notarization needs a secure timestamp, which ad-hoc signatures can't have.
+TIMESTAMP=--timestamp
+[[ "$IDENTITY" == - ]] && TIMESTAMP=--timestamp=none
+codesign --force --options runtime $TIMESTAMP $ENTITLEMENTS --sign "$IDENTITY" "$HELPER"
+codesign --force --options runtime $TIMESTAMP $ENTITLEMENTS --sign "$IDENTITY" "$APP"
 echo "Built $APP (signed: $IDENTITY)"
 
 case "$MODE" in
@@ -62,5 +74,20 @@ case "$MODE" in
     rm -rf "/Applications/BetterRemoteDisplay.app"
     ditto "$APP" "/Applications/BetterRemoteDisplay.app"
     open "/Applications/BetterRemoteDisplay.app"
+    ;;
+  dist)
+    ZIP="build/BetterRemoteDisplay$SUFFIX.zip"
+    rm -f "$ZIP"
+    ditto -c -k --keepParent "$APP" "$ZIP"
+    # NOTARY_PROFILE is a keychain profile made with `xcrun notarytool store-credentials`.
+    if [[ -n "${NOTARY_PROFILE:-}" ]]; then
+      xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
+      xcrun stapler staple "$APP"
+      rm -f "$ZIP"
+      ditto -c -k --keepParent "$APP" "$ZIP"
+    else
+      echo "Not notarized (NOTARY_PROFILE unset): Gatekeeper will block this on other Macs."
+    fi
+    echo "Packaged $ZIP"
     ;;
 esac

@@ -19,8 +19,12 @@ final class VirtualDisplayController {
     @discardableResult
     func apply(size: DisplaySize, hiDPI: Bool) -> Bool {
         let hiDPI = hiDPI && size.supportsHiDPI
-        if let applied, applied.size == size, applied.hiDPI == hiDPI,
-           let display, CGDisplayIsOnline(display.displayID) != 0 {
+        if let display, !Self.isOnline(display.displayID) {
+            // The system dropped it without telling us (seen when another copy of the helper
+            // created a display with the same identity). Start over.
+            teardown()
+        }
+        if let applied, applied.size == size, applied.hiDPI == hiDPI, display != nil {
             return true
         }
         guard size.isValid, let display = display ?? makeDisplay(for: size) else { return false }
@@ -51,6 +55,14 @@ final class VirtualDisplayController {
     func teardown() {
         display = nil
         applied = nil
+    }
+
+    private static func isOnline(_ id: CGDirectDisplayID) -> Bool {
+        var count: UInt32 = 0
+        CGGetOnlineDisplayList(0, nil, &count)
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        CGGetOnlineDisplayList(count, &ids, &count)
+        return ids.prefix(Int(count)).contains(id)
     }
 
     private func makeDisplay(for size: DisplaySize) -> CGVirtualDisplay? {
