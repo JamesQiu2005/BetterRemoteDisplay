@@ -7,12 +7,14 @@ struct BetterRemoteDisplayApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var store = ConfigStore()
     @State private var helper = HelperConnection()
+    @State private var displays = DisplayEnvironment()
 
     var body: some Scene {
         Window("BetterRemoteDisplay", id: "settings") {
             SettingsView()
                 .environment(store)
                 .environment(helper)
+                .environment(displays)
         }
         .windowResizability(.contentSize)
         .commands {

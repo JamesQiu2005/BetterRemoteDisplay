@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(ConfigStore.self) private var store
+    @Environment(DisplayEnvironment.self) private var displays
 
     var body: some View {
         if Edition.isAppStore {
@@ -25,11 +26,15 @@ struct SettingsView: View {
     private var tabs: some View {
         TabView {
             GeneralTab().tabItem { Label("General", systemImage: "gearshape") }
+            // With a real display attached the app does nothing, so nothing here is adjustable.
             if store.config.isPro {
-                PresetsTab().tabItem { Label("Presets", systemImage: "list.bullet") }
-                CustomTab().tabItem { Label("Custom", systemImage: "slider.horizontal.3") }
+                PresetsTab().disabled(displays.hasRealDisplay)
+                    .tabItem { Label("Presets", systemImage: "list.bullet") }
+                CustomTab().disabled(displays.hasRealDisplay)
+                    .tabItem { Label("Custom", systemImage: "slider.horizontal.3") }
             } else {
-                DeviceTab().tabItem { Label("Device", systemImage: "macbook.and.ipad") }
+                DeviceTab().disabled(displays.hasRealDisplay)
+                    .tabItem { Label("Device", systemImage: "macbook.and.ipad") }
                 ProTab().tabItem { Label("Pro", systemImage: "sparkles") }
             }
         }
@@ -42,9 +47,21 @@ struct SettingsView: View {
 private struct GeneralTab: View {
     @Environment(ConfigStore.self) private var store
     @Environment(HelperConnection.self) private var helper
+    @Environment(DisplayEnvironment.self) private var displays
 
     var body: some View {
         Form {
+            if displays.hasRealDisplay {
+                Section {
+                    Label {
+                        Text("Paused while a display is connected")
+                        Text("BetterRemoteDisplay only acts when this Mac has no display of its own. It resumes when the display is disconnected.")
+                    } icon: {
+                        Image(systemName: "pause.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
             Section {
                 Toggle(isOn: Binding(get: { helper.isRunning }, set: { helper.setEnabled($0) })) {
                     Text("Enable BetterRemoteDisplay")
@@ -88,7 +105,7 @@ private struct GeneralTab: View {
                 }
                 .disabled(!store.config.size.supportsHiDPI)
             }
-            .disabled(!helper.isRunning)
+            .disabled(!helper.isRunning || displays.hasRealDisplay)
 
             if Edition.isAppStore {
                 Section {

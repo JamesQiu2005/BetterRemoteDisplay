@@ -104,11 +104,13 @@ case "$MODE" in
     open "$APP"
     ;;
   install)
-    # Stop a running helper first so the old copy isn't the one holding the display.
-    pkill -x BetterRemoteDisplayHelper || true
     pkill -x BetterRemoteDisplay || true
     rm -rf "/Applications/BetterRemoteDisplay.app"
     ditto "$APP" "/Applications/BetterRemoteDisplay.app"
+    # Restart the helper only once the new copy is in place: when it is a login item, launchd
+    # relaunches it the moment it dies, and would otherwise bring back the old binary.
+    pkill -x BetterRemoteDisplayHelper || true
+    pkill -f "com.hanzeqiu.BetterRemoteDisplay.Helper" || true
     open "/Applications/BetterRemoteDisplay.app"
     ;;
   dist)

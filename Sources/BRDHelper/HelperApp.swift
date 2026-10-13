@@ -16,7 +16,7 @@ struct HelperApp: App {
             MenuPanel()
                 .environment(model)
         } label: {
-            Image(nsImage: MenuBarIcon.image(active: model.config.enabled && model.isHealthy))
+            Image(nsImage: MenuBarIcon.image(active: model.isActive))
                 .accessibilityLabel("BetterRemoteDisplay")
         }
         .menuBarExtraStyle(.window)

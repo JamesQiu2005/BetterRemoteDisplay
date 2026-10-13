@@ -75,7 +75,7 @@ final class VirtualDisplayController {
         descriptor.sizeInMillimeters = CGSize(width: Double(size.width) / 110 * 25.4,
                                               height: Double(size.height) / 110 * 25.4)
         // A stable identity lets macOS remember per-display settings between launches.
-        descriptor.vendorID = 0xB2D0
+        descriptor.vendorID = DisplayEnvironment.ownVendorID
         descriptor.productID = 0x0001
         descriptor.serialNum = 1
         descriptor.terminationHandler = { [weak self] _, _ in

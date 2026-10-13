@@ -80,8 +80,9 @@ distributed notification.
 
 - macOS refuses desktops smaller than roughly 960 × 540 points, so iPhone presets use the
   phone's native pixels at 2x (same aspect ratio) instead of its point size.
-- On a Mac with a physical display attached, the virtual display is added as an extra
-  display rather than replacing it.
+- It only acts on a Mac with no display of its own. While a monitor is connected (or a
+  laptop lid is open) the virtual display is withdrawn and the controls are disabled; it
+  comes back when the display is disconnected.
 
 ## License
 

@@ -11,6 +11,9 @@ final class HelperModel {
     let store = ConfigStore()
     /// False when the display should exist but could not be created.
     private(set) var isHealthy = true
+    /// True while a real display is attached. The virtual display is withdrawn and the menu
+    /// is disabled until it goes away.
+    private(set) var isPaused = false
     /// What macOS is really showing. Differs from the config when it rejects a size as too small.
     private(set) var actualSize: DisplaySize?
 
@@ -47,8 +50,15 @@ final class HelperModel {
 
     var config: Config { store.config }
 
+    /// Whether the virtual display is up and doing its job.
+    var isActive: Bool { config.enabled && !isPaused && isHealthy }
+
     func sync() {
-        if config.enabled {
+        isPaused = DisplayEnvironment.detectRealDisplay()
+        if isPaused {
+            controller.teardown()
+            isHealthy = true
+        } else if config.enabled {
             isHealthy = controller.apply(size: config.size, hiDPI: config.hiDPI)
         } else {
             controller.teardown()

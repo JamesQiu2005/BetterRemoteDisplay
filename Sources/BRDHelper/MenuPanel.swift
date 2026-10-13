@@ -14,10 +14,14 @@ struct MenuPanel: View {
     var body: some View {
         VStack(spacing: 12) {
             header
-            if config.isPro {
-                CategoryPicker(selection: $category)
+            Group {
+                if config.isPro {
+                    CategoryPicker(selection: $category)
+                }
+                presetList
             }
-            presetList
+            .disabled(model.isPaused)
+            .opacity(model.isPaused ? 0.4 : 1)
             if !config.isPro {
                 upgradeRow
             }
@@ -48,11 +52,13 @@ struct MenuPanel: View {
             ))
             .toggleStyle(.switch)
             .labelsHidden()
+            .disabled(model.isPaused)
         }
         .padding(.horizontal, 6)
     }
 
     private var status: String {
+        guard !model.isPaused else { return "Paused · a display is connected" }
         guard config.enabled else { return "Off" }
         guard model.isHealthy else { return "Couldn’t create display" }
         if let fallback = model.fallbackSize { return "Too small for macOS · using \(fallback.label)" }
@@ -73,7 +79,7 @@ struct MenuPanel: View {
                     VStack(spacing: 0) {
                         ForEach(presets) { preset in
                             PresetRow(preset: preset,
-                                      isSelected: config.enabled && preset.size.matches(config.size)) {
+                                      isSelected: model.isActive && preset.size.matches(config.size)) {
                                 model.select(preset)
                             }
                         }
@@ -123,7 +129,7 @@ struct MenuPanel: View {
                 Label("Rotate", systemImage: "rotate.right")
             }
             .help(config.size.isPortrait ? "Switch to landscape" : "Switch to portrait")
-            .disabled(!config.enabled)
+            .disabled(!config.enabled || model.isPaused)
             Spacer()
             Button("Settings…") { model.openSettings() }
         }
