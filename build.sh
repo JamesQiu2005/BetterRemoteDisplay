@@ -3,7 +3,8 @@
 #   ./build.sh            build into ./build
 #   ./build.sh run        build, then open the app
 #   ./build.sh install    build, then copy to /Applications and open it
-#   ./build.sh appstore   sandboxed build into ./build/AppStore
+#   ./build.sh appstore   sandboxed build into ./build/AppStore; with App Store certificates
+#                         and profiles in place (see README) also a .pkg ready to upload
 #   ./build.sh dist       build, then zip for distribution (notarized if NOTARY_PROFILE is set)
 set -euo pipefail
 cd "${0:A:h}"
@@ -15,11 +16,9 @@ if [[ "$MODE" == appstore ]]; then
   FLAGS=(-Xswiftc -DAPPSTORE)
   OUT="build/AppStore"
   CERT="Apple Distribution"
-  ENTITLEMENTS=(--entitlements Resources/AppStore.entitlements)
 else
   OUT="build"
   CERT="Developer ID Application"
-  ENTITLEMENTS=()
 fi
 APP="$OUT/BetterRemoteDisplay.app"
 HELPER="$APP/Contents/Library/LoginItems/BetterRemoteDisplay Helper.app"
@@ -50,15 +49,50 @@ cp build/AppIcon.icns "$HELPER/Contents/Resources/"
 # The matching certificate if there is one, otherwise ad-hoc. Override with SIGN_IDENTITY.
 IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' -v cert="$CERT" 'index($2, cert) {print $2; exit}')}"
 IDENTITY="${IDENTITY:--}"
+
+# Entitlements for one bundle. The App Store wants each to name its own App ID and team,
+# which only a matching provisioning profile can authorize, so those are added only when
+# signing with a distribution certificate.
+entitlements_for() {
+  local bundle_id="$1" out="build/$1.entitlements"
+  cp Resources/AppStore.entitlements "$out"
+  if [[ "$IDENTITY" == "Apple Distribution"* || "$IDENTITY" == "3rd Party Mac Developer Application"* ]]; then
+    local team="${${IDENTITY##*\(}%\)}"
+    /usr/libexec/PlistBuddy -c "Add :com.apple.application-identifier string $team.$bundle_id" \
+                            -c "Add :com.apple.developer.team-identifier string $team" "$out"
+  fi
+  echo "$out"
+}
+
+APP_ENTITLEMENTS=()
+HELPER_ENTITLEMENTS=()
+if [[ "$MODE" == appstore ]]; then
+  APP_ENTITLEMENTS=(--entitlements "$(entitlements_for com.hanzeqiu.BetterRemoteDisplay)")
+  HELPER_ENTITLEMENTS=(--entitlements "$(entitlements_for com.hanzeqiu.BetterRemoteDisplay.Helper)")
+  # Mac App Store provisioning profiles, downloaded from the developer portal.
+  [[ -f Signing/App.provisionprofile ]] && cp Signing/App.provisionprofile "$APP/Contents/embedded.provisionprofile"
+  [[ -f Signing/Helper.provisionprofile ]] && cp Signing/Helper.provisionprofile "$HELPER/Contents/embedded.provisionprofile"
+fi
+
 xattr -cr "$APP"
 # Notarization needs a secure timestamp, which ad-hoc signatures can't have.
 TIMESTAMP=--timestamp
 [[ "$IDENTITY" == - ]] && TIMESTAMP=--timestamp=none
-codesign --force --options runtime $TIMESTAMP $ENTITLEMENTS --sign "$IDENTITY" "$HELPER"
-codesign --force --options runtime $TIMESTAMP $ENTITLEMENTS --sign "$IDENTITY" "$APP"
+codesign --force --options runtime $TIMESTAMP $HELPER_ENTITLEMENTS --sign "$IDENTITY" "$HELPER"
+codesign --force --options runtime $TIMESTAMP $APP_ENTITLEMENTS --sign "$IDENTITY" "$APP"
 echo "Built $APP (signed: $IDENTITY)"
 
 case "$MODE" in
+  appstore)
+    INSTALLER="$(security find-identity -v | awk -F'"' '/Mac Installer Distribution|3rd Party Mac Developer Installer/ {print $2; exit}')"
+    if [[ "$IDENTITY" == - || "$IDENTITY" == "Developer ID"* || -z "$INSTALLER" || ! -f "$APP/Contents/embedded.provisionprofile" ]]; then
+      echo "Local test build only. An App Store package needs the Apple Distribution and"
+      echo "Mac Installer Distribution certificates plus Signing/{App,Helper}.provisionprofile."
+    else
+      productbuild --component "$APP" /Applications --sign "$INSTALLER" "$OUT/BetterRemoteDisplay.pkg"
+      echo "Packaged $OUT/BetterRemoteDisplay.pkg (upload with Transporter)"
+    fi
+    ;;
   run)
     open "$APP"
     ;;

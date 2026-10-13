@@ -49,6 +49,11 @@ Everything built from this repository is free and complete, except the Mac App S
 (`./build.sh appstore`), which is free for one device and unlocks more devices and custom
 resolutions with a one-time in-app purchase.
 
+To produce a package for App Store Connect, install the Apple Distribution and Mac Installer
+Distribution certificates, and save the two Mac App Store provisioning profiles (one per
+bundle ID) as `Signing/App.provisionprofile` and `Signing/Helper.provisionprofile`. Then
+`./build.sh appstore` writes `build/AppStore/BetterRemoteDisplay.pkg`.
+
 ## How it works
 
 The helper creates a virtual display through `CGVirtualDisplay` and resizes it in place when
