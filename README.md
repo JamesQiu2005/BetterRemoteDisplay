@@ -18,6 +18,11 @@ falls back to.
 - A background helper that lives in the menu bar and starts at login, and a small settings
   window that only needs to be open while you change something.
 
+## Install
+
+Download the latest build from [Releases](https://github.com/JamesQiu2005/BetterRemoteDisplay/releases),
+unzip it and move BetterRemoteDisplay to Applications. Open it and switch on **Enable**.
+
 ## Requirements
 
 - macOS 14 or later, Apple silicon or Intel. Liquid Glass styling on macOS 26 and later.
@@ -42,11 +47,6 @@ otherwise. Set `SIGN_IDENTITY` to choose a different identity.
 If you build under your own team, replace the team ID in the app group identifier in
 `Sources/BRDShared/ConfigStore.swift` and `Resources/AppStore.entitlements`, and the bundle
 identifiers in `Resources/*.plist`.
-
-## Releases
-
-Pushing a tag like `v1.2` runs `.github/workflows/release.yml` on a self-hosted runner, which
-builds, signs and notarizes the app and attaches it to a GitHub Release.
 
 ## Editions
 
