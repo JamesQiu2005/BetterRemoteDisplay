@@ -47,7 +47,7 @@ cp build/AppIcon.icns "$APP/Contents/Resources/"
 cp build/AppIcon.icns "$HELPER/Contents/Resources/"
 
 # The matching certificate if there is one, otherwise ad-hoc. Override with SIGN_IDENTITY.
-IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' -v cert="$CERT" 'index($2, cert) {print $2; exit}')}"
+IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' -v cert="$CERT" 'index($2, cert) && !found {found = $2} END {print found}')}"
 IDENTITY="${IDENTITY:--}"
 
 # Entitlements for one bundle. The App Store wants each to name its own App ID and team,
@@ -84,7 +84,7 @@ echo "Built $APP (signed: $IDENTITY)"
 
 case "$MODE" in
   appstore)
-    INSTALLER="$(security find-identity -v | awk -F'"' '/Mac Installer Distribution|3rd Party Mac Developer Installer/ {print $2; exit}')"
+    INSTALLER="$(security find-identity -v | awk -F'"' '/Mac Installer Distribution|3rd Party Mac Developer Installer/ && !found {found = $2} END {print found}')"
     if [[ "$IDENTITY" == - || "$IDENTITY" == "Developer ID"* || -z "$INSTALLER" || ! -f "$APP/Contents/embedded.provisionprofile" ]]; then
       echo "Local test build only. An App Store package needs the Apple Distribution and"
       echo "Mac Installer Distribution certificates plus Signing/{App,Helper}.provisionprofile."
